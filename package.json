@@ -1,0 +1,43 @@
+{
+  "name": "atlas",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "format": "yarn prettier --write './**/*.{js,json,ts,tsx}'",
+    "lint": "tslint -c tslint.json --fix -t verbose './{src,migrations}/**/*.{js,ts,tsx}'",
+    "start": "ts-node -r tsconfig-paths/register ./src/cli.ts",
+    "test": "truffle test",
+    "test:watch": "yarn nodemon -w ./src -w ./test -e js,ts -x 'yarn test'"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^2.3.4",
+    "@pheme-kit/core": "^0.0.1-alpha.8",
+    "@pheme-kit/ethereum": "^0.0.1-alpha.8",
+    "@pheme-kit/storage-ipfs": "^0.0.1-alpha.8",
+    "@types/bunyan": "^1.8.5",
+    "@types/node": "^10.12.0",
+    "@types/p-queue": "^2.3.1",
+    "@types/uuid": "^3.4.3",
+    "bunyan": "^1.8.12",
+    "ethers": "^4.0.27",
+    "go-ipfs-dep": "^0.4.18",
+    "ipfsd-ctl": "^0.40.0",
+    "moment": "^2.22.1",
+    "node-schedule": "^1.3.0",
+    "p-queue": "^3.0.0",
+    "prettier": "1.16.4",
+    "tmp": "^0.1.0",
+    "truffle": "^5.0.12",
+    "ts-node": "^8.1.0",
+    "tsconfig-paths": "^3.2.0",
+    "tslint": "5.12.1",
+    "typescript": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.6",
+    "chai": "^4.2.0",
+    "nodemon": "^1.18.11"
+  }
+}

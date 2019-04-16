@@ -1,0 +1,9 @@
+node_modules
+build
+*.log
+src/config/state.development.json
+src/config/state.json
+package-lock.json
+.env
+.ipfs
+artifacts
