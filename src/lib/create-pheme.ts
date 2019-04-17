@@ -9,7 +9,7 @@ import {
   EmbeddedAtlasIPFSConfig,
   AtlasConfig,
   AtlasIPFSEndpoints,
-} from '../types';
+} from './types';
 
 export function createProvider({ config }: { config: AtlasConfig }) {
   const { ethereum: ethereumConfig } = config;

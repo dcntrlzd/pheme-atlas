@@ -1,6 +1,3 @@
-declare var artifacts: any;
-declare var contract: (name: string, callback: (accounts: string[]) => any) => any;
-
 import Pheme from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
 
@@ -13,6 +10,9 @@ import * as Logger from 'bunyan';
 import { run } from '../src/lib/atlas';
 import { AtlasConfig } from '../src/lib/types';
 
+let artifacts: any;
+let contract: (name: string, callback: (accounts: string[]) => any) => any;
+
 type ThenArg<T> = T extends Promise<infer U>
   ? U
   : T extends (...args: any[]) => Promise<infer U>
@@ -21,7 +21,7 @@ type ThenArg<T> = T extends Promise<infer U>
 
 type Atlas = ThenArg<ReturnType<typeof run>>;
 
-contract('Atlas e2e test', (accounts) => {
+contract('Atlas e2e test', accounts => {
   const Registry: any = artifacts.require('RegistryV1');
 
   let server: any;
@@ -104,7 +104,7 @@ contract('Atlas e2e test', (accounts) => {
   it('should boot', async () => {
     console.log('HELLO');
     atlas = await run(logger, config);
-  //   atlas.queue.pause();
-  //   expect(logBuffer.records.find(record => record.state === 'ready')).toBeDefined();
+    //   atlas.queue.pause();
+    //   expect(logBuffer.records.find(record => record.state === 'ready')).toBeDefined();
   });
 });

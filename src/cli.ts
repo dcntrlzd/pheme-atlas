@@ -1,7 +1,8 @@
-import { run } from './lib/atlas';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as Logger from 'bunyan';
 
-import { AtlasConfig } from './lib/types';
+import { run } from './lib/atlas';
 
 const logger = Logger.createLogger({
   name: 'atlas',
@@ -10,7 +11,7 @@ const logger = Logger.createLogger({
 });
 
 const { CONFIG, CONFIG_PATH } = process.env;
-const config: AtlasConfig = JSON.parse(
+const config: any = JSON.parse(
   CONFIG || fs.readFileSync(path.resolve(__dirname, CONFIG_PATH)).toString()
 );
 

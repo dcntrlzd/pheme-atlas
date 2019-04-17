@@ -9,9 +9,11 @@ const mockTask = <T, M>(fn: (...fnArgs: any) => Promise<T>) => (...args: any) =>
 
 export default class TestRegistry implements IRegistry {
   private providerBlockNumber = 0;
+
   private emitter = new EventEmitter();
 
   public records: { [handle: string]: any } = {};
+
   public contract: any;
 
   constructor() {
@@ -33,21 +35,25 @@ export default class TestRegistry implements IRegistry {
   );
 
   public getPointer = mockTask(handle => Promise.resolve(this.query(handle, 'pointer')));
+
   public setPointer = mockTask((handle, value) =>
     Promise.resolve(this.update(handle, 'pointer', value))
   );
 
   public getOwner = mockTask(handle => Promise.resolve(this.query(handle, 'owner')));
+
   public setOwner = mockTask((handle, value) =>
     Promise.resolve(this.update(handle, 'owner', value))
   );
 
   public getProfile = mockTask(handle => Promise.resolve(this.query(handle, 'profile')));
+
   public setProfile = mockTask((handle, value) =>
     Promise.resolve(this.update(handle, 'profile', value))
   );
 
   public getHandleCount = mockTask(() => Promise.resolve(Object.keys(this.records).length));
+
   public getHandleAt = mockTask(i => Promise.resolve(Object.keys(this.records)[i]));
 
   public getLatestHandles = mockTask(limit => {

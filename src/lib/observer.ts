@@ -37,6 +37,7 @@ export default class Observer extends EventEmitter {
     await instance.refresh();
     return instance;
   }
+
   public readonly pheme: Pheme<PhemeRegistry>;
 
   public state: State;

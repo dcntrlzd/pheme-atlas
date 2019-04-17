@@ -10,29 +10,28 @@ import moment from 'moment';
 import tmp from 'tmp';
 import { Storage as CloudStorage } from '@google-cloud/storage';
 
-import Observer, { State } from '../observer';
-
 import Pheme, { IBlock } from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
 import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
 
 import * as Logger from 'bunyan';
+import Observer, { State } from './observer';
 
 import {
   ExternalAtlasIPFSConfig,
   EmbeddedAtlasIPFSConfig,
   AtlasConfig,
   AtlasIPFSEndpoints,
-} from '../types';
+} from './types';
 
-import createIPFS from '../create-ipfs';
-import createPheme from '../create-pheme';
+import createIPFS from './create-ipfs';
+import createPheme from './create-pheme';
 
 import { pinPost, pinHandle, pinState, archiveState, ipfsHealthcheck } from '../jobs';
 
 // import schedule from 'node-schedule';
 
-class PhemeAtlas {
+export default class PhemeAtlas {
   public static validateConfig(config: any): AtlasConfig {
     if (!config.ipfs) throw new Error('config.ipfs not found');
     if (!config.ipfs.repositoryPath) {
@@ -61,75 +60,58 @@ class PhemeAtlas {
 
     const ipfs = await createIPFS({ config, logger });
     const pheme = await createPheme({ config, ipfs, logger });
+    const observer = await Observer.create(pheme);
 
-    return new PhemeAtlas({ logger, ipfs, pheme });
+    logger.info({ state: 'ready' }, 'Atlas is ready');
+    return new PhemeAtlas({ logger, ipfs, pheme, observer });
   }
 
-  public readonly jobQueue = new PQueue({ concurrency: 2 });
   public readonly logger: Logger;
+
   public readonly ipfs: AtlasIPFSEndpoints;
+
   public readonly pheme: Pheme<PhemeRegistry>;
+
+  public readonly observer: Observer;
 
   private constructor({
     pheme,
     logger,
     ipfs,
+    observer,
   }: {
     logger: Logger;
     ipfs: AtlasIPFSEndpoints;
     pheme: Pheme<PhemeRegistry>;
+    observer: Observer;
   }) {
     this.logger = logger;
     this.ipfs = ipfs;
     this.pheme = pheme;
-  }
-
-  public queue(jobName: string, ...params: any[]) {
-    switch (jobName) {
-      case 'initialPinState':
-      case 'refreshPinState':
-        break;
-      case 'pinNewHandle':
-      case 'pinUpdatedHandle':
-        break;
-      case 'pinNewPost':
-      case 'pinUpdatedPost':
-        break;
-      case 'ipfsHealthcheck':
-        break;
-      case 'refresh':
-        break;
-      case 'refreshArchiveState':
-        break;
-    }
+    this.observer = observer;
   }
 }
 
 export async function run(logger: Logger, config: AtlasConfig) {
   const atlas = await PhemeAtlas.create(config, logger);
 
-  const ipfs = await createIPFS({ config, logger });
-  const pheme = await createPheme({ config, ipfs, logger });
-  const queue = new PQueue({ concurrency: 2 });
+  const jobQueue = new PQueue({ concurrency: 2 });
 
-  const queueJob = (name: string, job: (Logger) => any) => {
+  const queue = (name: string, job: (Atlas) => any) => {
     const jobId = generateUUID();
-    const jobLogger = logger.child({ process: `job:${name}`, jobId });
+    const jobLogger = atlas.logger.child({ process: `job:${name}`, jobId });
 
     jobLogger.info({ state: 'queued' });
-    queue.add(async () => {
+    jobQueue.add(async () => {
       try {
         jobLogger.info({ state: 'begin' });
-        await job(jobLogger);
+        await job({ ...atlas, logger: jobLogger });
         jobLogger.info({ state: 'end' });
       } catch (e) {
         jobLogger.info({ state: 'failed' });
       }
     });
   };
-
-  const observer = await Observer.create(pheme);
-  logger.info({ state: 'ready' }, 'Atlas is ready');
 
   const start = () => {
     // schedule.scheduleJob('*/15 * * * *', () => {
@@ -138,19 +120,19 @@ export async function run(logger: Logger, config: AtlasConfig) {
     //    });
     // })
 
-    queueJob('intialPinState', jobLogger => {
-      pinState({ pheme, logger: jobLogger, state: observer.state });
+    queue('intialPinState', jobLogger => {
+      pinState({ atlas });
     });
 
     // schedule.scheduleJob('0 0 */1 * *', () =>
-    //   queueJob('refresh', async jobLogger => {
+    //   queue('refresh', async jobLogger => {
     //     queue.pause();
     //     try {
     //       await listener.refresh();
     //       const context = { pheme, logger: jobLogger, state: listener.state };
 
-    //       queueJob('refreshPinState', () => pinState(context));
-    //       queueJob('refreshArchiveState', () => archiveState(context));
+    //       queue('refreshPinState', () => pinState(context));
+    //       queue('refreshArchiveState', () => archiveState(context));
     //     } catch (e) {
     //     } finally {
     //       queue.start();
@@ -159,33 +141,22 @@ export async function run(logger: Logger, config: AtlasConfig) {
     // );
 
     // Pin relevant content with each update
-    observer.on(Observer.events.newHandle, handle =>
-      queueJob('pinNewHandle', jobLogger => {
-        pinHandle({ pheme, logger: jobLogger, state: observer.state, handle });
-      })
+    atlas.observer.on(Observer.events.newHandle, handle =>
+      queue('pinNewHandle', () => pinHandle({ atlas, handle }))
     );
 
-    observer.on(Observer.events.updateProfile, handle =>
-      queueJob('pinUpdatedHandle', jobLogger => {
-        // pin handle
-        pinHandle({ pheme, logger: jobLogger, state: observer.state, handle });
-      })
+    atlas.observer.on(Observer.events.updateProfile, handle =>
+      queue('pinUpdatedHandle', () => pinHandle({ atlas, handle }))
     );
 
-    observer.on(Observer.events.newPost, (handle, uuid) =>
-      queueJob('pinNewPost', jobLogger => {
-        // pin post
-        pinPost({ pheme, logger: jobLogger, state: observer.state, handle, uuid });
-      })
+    atlas.observer.on(Observer.events.newPost, (handle, uuid) =>
+      queue('pinNewPost', () => pinPost({ atlas, handle, uuid }))
     );
 
-    observer.on(Observer.events.updatePost, (handle, uuid) =>
-      queueJob('pinUpdatedPost', jobLogger => {
-        // pin post
-        pinPost({ pheme, logger: jobLogger, state: observer.state, handle, uuid });
-      })
+    atlas.observer.on(Observer.events.updatePost, (handle, uuid) =>
+      queue('pinUpdatedPost', () => pinPost({ atlas, handle, uuid }))
     );
   };
 
-  return { pheme, ipfs, logger, observer, start, queue };
+  return { atlas, start };
 }

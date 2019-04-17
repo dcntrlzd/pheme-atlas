@@ -4,9 +4,9 @@ const path = require('path');
 
 module.exports = {
   development: {
-    host: "127.0.0.1",
+    host: '127.0.0.1',
     port: 9999,
-    network_id: "*",
+    network_id: '*',
   },
   test_file_extension_regexp: /.*\.[tj]s$/,
   contracts_build_directory: path.join(__dirname, 'artifacts'),

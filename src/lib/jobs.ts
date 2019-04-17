@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import * as path from 'path';
 import * as fs from 'fs';
 import moment from 'moment';
@@ -8,39 +9,39 @@ import PhemeRegistry from '@pheme-kit/core/lib/registry';
 import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
 import * as ethers from 'ethers';
 import * as Logger from 'bunyan';
-import { State } from '../observer';
+
+import PhemeAtlas from './atlas';
 
 interface PinOptions {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
+  atlas: PhemeAtlas;
   timeout?: number;
 }
 
-export const pinFile = (address: string, { pheme, logger, timeout = 30000 }: PinOptions) =>
+export const pinFile = (address: string, { atlas, timeout = 30000 }: PinOptions) =>
   new Promise(async resolve => {
-    const { ipfs } = (pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
+    const { ipfs } = (atlas.pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
     const hash = hashFromUrl(address);
 
     let isTimedOut = false;
     const timeoutId = setTimeout(() => {
       isTimedOut = true;
-      logger.error({ hashState: 'timedout', hash });
+      atlas.logger.error({ hashState: 'timedout', hash });
       resolve();
     }, timeout);
 
     const currentMatches = await ipfs.pin.ls(hash);
     if (currentMatches.length > 0) {
-      logger.info({ hashState: 'exists', hash });
+      atlas.logger.info({ hashState: 'exists', hash });
       clearTimeout(timeoutId);
       return resolve();
     }
 
-    logger.info({ hashState: 'new', hash });
+    atlas.logger.info({ hashState: 'new', hash });
 
     ipfs.pin
       .add(hash)
       .catch(err => {
-        logger.error({ hashState: 'failed', hash, err });
+        atlas.logger.error({ hashState: 'failed', hash, err });
       })
       .then(() => {
         clearTimeout(timeoutId);
@@ -59,21 +60,17 @@ export const pinImage = (image: { [key: string]: string }, options: PinOptions):
 };
 
 export const pinPost = async ({
-  pheme,
-  logger,
-  state,
+  atlas,
   handle,
   uuid,
 }: {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
-  state: State;
+  atlas: PhemeAtlas;
   handle: string;
   uuid: string;
 }) => {
-  const handleState = state[handle];
+  const handleState = atlas.observer.state[handle];
   if (!handleState) {
-    logger.error({ postState: 'missing', handle });
+    atlas.logger.error({ postState: 'missing', handle });
     return;
   }
 
@@ -83,11 +80,11 @@ export const pinPost = async ({
   const postState = postIndex >= 0 ? handleState.chain[postIndex] : undefined;
 
   if (!postState) {
-    logger.error({ postState: 'missing', handle });
+    atlas.logger.error({ postState: 'missing', handle });
     return;
   }
 
-  const options = { pheme, logger };
+  const options = { atlas };
 
   return Promise.all([
     postPointer ? pinFile(postPointer, options) : null,
@@ -98,28 +95,18 @@ export const pinPost = async ({
   ]);
 };
 
-export const pinHandle = async ({
-  pheme,
-  logger,
-  state,
-  handle,
-}: {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
-  state: State;
-  handle: string;
-}) => {
-  const handleState = state[handle];
+export const pinHandle = async ({ atlas, handle }: { atlas: PhemeAtlas; handle: string }) => {
+  const handleState = atlas.observer.state[handle];
   if (!handleState) {
-    logger.error({ handleState: 'missing', handle });
+    atlas.logger.error({ handleState: 'missing', handle });
     return;
   }
 
   const { profile } = handleState;
-  const profileDetails: any = profile ? await pheme.storage.readObject(profile) : {};
+  const profileDetails: any = profile ? await atlas.pheme.storage.readObject(profile) : {};
   const { avatarUrl, avatar } = profileDetails;
 
-  const options = { pheme, logger };
+  const options = { atlas };
 
   return Promise.all([
     profile ? pinFile(profile, options) : null,
@@ -128,34 +115,21 @@ export const pinHandle = async ({
   ]);
 };
 
-export const pinState = async ({
-  pheme,
-  logger,
-  state,
-}: {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
-  state: State;
-}) => {
+export const pinState = async ({ atlas }: { atlas: PhemeAtlas }) => {
+  const state = { ...atlas.observer.state };
   for (const handle of Object.keys(state)) {
-    await pinHandle({ handle, state, pheme, logger });
+    await pinHandle({ handle, atlas });
     const { chain } = state[handle];
     for (const post of chain) {
       const { uuid } = post;
-      await pinPost({ handle, state, pheme, logger, uuid });
+      await pinPost({ atlas, handle, uuid });
     }
   }
 };
 
-export const archiveState = async ({
-  pheme,
-  logger,
-  state,
-}: {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
-  state: State;
-}) => {
+export const archiveState = async ({ atlas }: { atlas: PhemeAtlas }) => {
+  const state = { ...atlas.observer.state };
+
   const gcpBucketName = process.env.GCP_BUCKET_NAME;
   if (!gcpBucketName) return;
 
@@ -163,28 +137,30 @@ export const archiveState = async ({
   const bucket = cloudStorage.bucket(gcpBucketName);
   await bucket.exists();
 
-  const { chainId: networkId } = await pheme.registry.contract.provider.getNetwork();
+  const { chainId: networkId } = await atlas.pheme.registry.contract.provider.getNetwork();
   const snapshotId = `${networkId}/${moment()
     .utc()
     .format('YYYY-MM-DDTHH-mm')}`;
 
   const handleLog = tmp.fileSync();
   for (const handle of Object.keys(state)) {
-    logger.info({ snapshotId, type: 'handle', handle });
+    atlas.logger.info({ snapshotId, type: 'handle', handle });
 
     const handleState = state[handle];
     const { owner, chain } = handleState;
-    const profile = handleState.profile ? await pheme.storage.readObject(handleState.profile) : {};
+    const profile = handleState.profile
+      ? await atlas.pheme.storage.readObject(handleState.profile)
+      : {};
 
-    fs.appendFileSync(handleLog.name, JSON.stringify({ handle, profile, owner }) + '\n');
+    fs.appendFileSync(handleLog.name, `${JSON.stringify({ handle, profile, owner })}\n`);
 
     const postLog = tmp.fileSync();
     let { pointer } = handleState;
     for (const ring of chain) {
-      const post = await pheme.storage.readObject(ring.address);
+      const post = await atlas.pheme.storage.readObject(ring.address);
 
-      logger.info({ snapshotId, type: 'post', handle, ring: ring.uuid });
-      fs.appendFileSync(postLog.name, JSON.stringify({ pointer, handle, ring, post }) + '\n');
+      atlas.logger.info({ snapshotId, type: 'post', handle, ring: ring.uuid });
+      fs.appendFileSync(postLog.name, `${JSON.stringify({ pointer, handle, ring, post })}\n`);
       pointer = ring.previous;
     }
 
@@ -197,16 +173,14 @@ export const archiveState = async ({
 };
 
 export const ipfsHealthcheck = async ({
-  pheme,
-  logger,
+  atlas,
   timeout = 5000,
 }: {
-  pheme: Pheme<PhemeRegistry>;
-  logger: Logger;
+  atlas: PhemeAtlas;
   timeout?: number;
 }) => {
-  const { ipfs } = (pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
-  logger.info({ state: 'begin' });
+  const { ipfs } = (atlas.pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
+  atlas.logger.info({ state: 'begin' });
 
   const timeoutId = setTimeout(() => {
     throw new Error(`IPFS healtcheck timed out after ${timeout}ms.`);

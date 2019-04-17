@@ -8,7 +8,7 @@ import {
   EmbeddedAtlasIPFSConfig,
   AtlasConfig,
   AtlasIPFSEndpoints,
-} from '../types';
+} from './types';
 
 export function createIPFSServer(options: {
   repositoryPath: string;
@@ -93,14 +93,13 @@ export default async function createIPFS({
     logger.info(`Will use provided IPFS: ${rpcUrl}, ${gatewayUrl}`);
 
     return { ipfsRpcUrl: rpcUrl, ipfsGatewayUrl: gatewayUrl, server: undefined };
-  } else {
-    const { repositoryPath } = ipfsConfig as EmbeddedAtlasIPFSConfig;
-    logger.info(`Will use embedded IPFS at: ${repositoryPath}`);
-    const server = await createIPFSServer({ repositoryPath, logger });
-
-    const ipfsRpcUrl = `http://127.0.0.1:${server.api.apiPort}`;
-    const ipfsGatewayUrl = `http://127.0.0.1:${server.api.gatewayPort}`;
-
-    return { ipfsRpcUrl, ipfsGatewayUrl, server };
   }
+  const { repositoryPath } = ipfsConfig as EmbeddedAtlasIPFSConfig;
+  logger.info(`Will use embedded IPFS at: ${repositoryPath}`);
+  const server = await createIPFSServer({ repositoryPath, logger });
+
+  const ipfsRpcUrl = `http://127.0.0.1:${server.api.apiPort}`;
+  const ipfsGatewayUrl = `http://127.0.0.1:${server.api.gatewayPort}`;
+
+  return { ipfsRpcUrl, ipfsGatewayUrl, server };
 }

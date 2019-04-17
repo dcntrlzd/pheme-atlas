@@ -1,11 +1,11 @@
 {
-  "name": "atlas",
+  "name": "pheme-atlas",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
     "format": "yarn prettier --write './**/*.{js,json,ts,tsx}'",
-    "lint": "tslint -c tslint.json --fix -t verbose './{src,migrations}/**/*.{js,ts,tsx}'",
+    "lint": "eslint --fix --cache './{src,migrations,test}/**/*.{js,ts,tsx}'",
     "start": "ts-node -r tsconfig-paths/register ./src/cli.ts",
     "test": "truffle test",
     "test:watch": "yarn nodemon -w ./src -w ./test -e js,ts -x 'yarn test'"
@@ -31,13 +31,20 @@
     "truffle": "^5.0.12",
     "ts-node": "^8.1.0",
     "tsconfig-paths": "^3.2.0",
-    "tslint": "5.12.1",
     "typescript": "^3.4.3"
   },
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.6",
+    "@typescript-eslint/eslint-plugin": "^1.6.0",
+    "@typescript-eslint/parser": "^1.6.0",
     "chai": "^4.2.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jsx-a11y": "^6.1.1",
+    "eslint-plugin-react": "^7.11.0",
     "nodemon": "^1.18.11"
   }
 }
