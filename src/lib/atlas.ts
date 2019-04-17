@@ -5,6 +5,7 @@ import Pheme from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
 
 import * as Logger from 'bunyan';
+import schedule from 'node-schedule';
 import Observer from './observer';
 
 import { AtlasConfig, AtlasIPFSEndpoints } from './types';
@@ -13,8 +14,6 @@ import createIPFS from './create-ipfs';
 import createPheme from './create-pheme';
 
 import { pinPost, pinHandle, pinState, archiveState, ipfsHealthcheck } from './jobs';
-
-// import schedule from 'node-schedule';
 
 export default class PhemeAtlas {
   public static validateConfig(config: any): AtlasConfig {
@@ -99,47 +98,42 @@ export async function run(logger: Logger, config: AtlasConfig) {
   };
 
   const start = () => {
-    // schedule.scheduleJob('*/15 * * * *', () => {
-    //    queueJob('ipfsHealthcheck', async jobLogger => {
-    //      ipfsHealthcheck({ pheme, logger: jobLogger });
-    //    });
-    // })
+    logger.info({ state: 'listening' }, 'Atlas is listening...');
 
-    queue('intialPinState', () => {
-      pinState({ atlas });
+    schedule.scheduleJob('*/15 * * * *', () => {
+      queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
     });
 
-    // schedule.scheduleJob('0 0 */1 * *', () =>
-    //   queue('refresh', async jobLogger => {
-    //     queue.pause();
-    //     try {
-    //       await listener.refresh();
-    //       const context = { pheme, logger: jobLogger, state: listener.state };
+    queue('intialPinState', context => pinState({ context }));
 
-    //       queue('refreshPinState', () => pinState(context));
-    //       queue('refreshArchiveState', () => archiveState(context));
-    //     } catch (e) {
-    //     } finally {
-    //       queue.start();
-    //     }
-    //   })
-    // );
+    schedule.scheduleJob('0 0 */1 * *', () =>
+      queue('refresh', async context => {
+        jobQueue.pause();
+        try {
+          await context.observer.refresh();
+          queue('refreshPinState', () => pinState({ context }));
+          queue('refreshArchiveState', () => archiveState({ context }));
+        } finally {
+          jobQueue.pause();
+        }
+      })
+    );
 
     // Pin relevant content with each update
     atlas.observer.on(Observer.events.newHandle, handle =>
-      queue('pinNewHandle', () => pinHandle({ atlas, handle }))
+      queue('pinNewHandle', context => pinHandle({ context, handle }))
     );
 
     atlas.observer.on(Observer.events.updateProfile, handle =>
-      queue('pinUpdatedHandle', () => pinHandle({ atlas, handle }))
+      queue('pinUpdatedHandle', context => pinHandle({ context, handle }))
     );
 
     atlas.observer.on(Observer.events.newPost, (handle, uuid) =>
-      queue('pinNewPost', () => pinPost({ atlas, handle, uuid }))
+      queue('pinNewPost', context => pinPost({ context, handle, uuid }))
     );
 
     atlas.observer.on(Observer.events.updatePost, (handle, uuid) =>
-      queue('pinUpdatedPost', () => pinPost({ atlas, handle, uuid }))
+      queue('pinUpdatedPost', context => pinPost({ context, handle, uuid }))
     );
   };
 
