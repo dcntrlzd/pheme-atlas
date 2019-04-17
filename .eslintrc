@@ -1,6 +1,6 @@
 {
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
+  "plugins": ["@typescript-eslint", "prettier", "json"],
   "parserOptions": {
     "project": "./tsconfig.json"
   },
@@ -26,5 +26,6 @@
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "no-restricted-syntax": ["error", "LabeledStatement", "WithStatement"],
+    "prettier/prettier": "error"
   }
 }

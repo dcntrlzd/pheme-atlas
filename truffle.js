@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/camelcase, @typescript-eslint/no-var-requires */
 require('ts-node').register();
 
 const path = require('path');
