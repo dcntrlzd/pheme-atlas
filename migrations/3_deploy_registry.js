@@ -1,7 +1,7 @@
 const Storage = artifacts.require('RegistryStorage');
 const Registry = artifacts.require('RegistryV1');
 
-module.exports = async deployer => {
+module.exports = async function migration(deployer) {
   let storage;
   let registry;
 

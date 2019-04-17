@@ -1,33 +1,18 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import * as ethers from 'ethers';
 import PQueue from 'p-queue';
 import { v4 as generateUUID } from 'uuid';
 
-// import * as path from 'path';
-// import * as fs from 'fs';
-import moment from 'moment';
-import tmp from 'tmp';
-import { Storage as CloudStorage } from '@google-cloud/storage';
-
-import Pheme, { IBlock } from '@pheme-kit/core';
+import Pheme from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
-import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
 
 import * as Logger from 'bunyan';
-import Observer, { State } from './observer';
+import Observer from './observer';
 
-import {
-  ExternalAtlasIPFSConfig,
-  EmbeddedAtlasIPFSConfig,
-  AtlasConfig,
-  AtlasIPFSEndpoints,
-} from './types';
+import { AtlasConfig, AtlasIPFSEndpoints } from './types';
 
 import createIPFS from './create-ipfs';
 import createPheme from './create-pheme';
 
-import { pinPost, pinHandle, pinState, archiveState, ipfsHealthcheck } from '../jobs';
+import { pinPost, pinHandle, pinState, archiveState, ipfsHealthcheck } from './jobs';
 
 // import schedule from 'node-schedule';
 
@@ -59,7 +44,7 @@ export default class PhemeAtlas {
     PhemeAtlas.validateConfig(config);
 
     const ipfs = await createIPFS({ config, logger });
-    const pheme = await createPheme({ config, ipfs, logger });
+    const pheme = await createPheme({ config, ipfs });
     const observer = await Observer.create(pheme);
 
     logger.info({ state: 'ready' }, 'Atlas is ready');
@@ -120,7 +105,7 @@ export async function run(logger: Logger, config: AtlasConfig) {
     //    });
     // })
 
-    queue('intialPinState', jobLogger => {
+    queue('intialPinState', () => {
       pinState({ atlas });
     });
 

@@ -1,14 +1,9 @@
 /* eslint-disable no-await-in-loop */
-import * as path from 'path';
 import * as fs from 'fs';
 import moment from 'moment';
 import tmp from 'tmp';
 import { Storage as CloudStorage } from '@google-cloud/storage';
-import Pheme, { IBlock } from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
 import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
-import * as ethers from 'ethers';
-import * as Logger from 'bunyan';
 
 import PhemeAtlas from './atlas';
 
@@ -33,7 +28,8 @@ export const pinFile = (address: string, { atlas, timeout = 30000 }: PinOptions)
     if (currentMatches.length > 0) {
       atlas.logger.info({ hashState: 'exists', hash });
       clearTimeout(timeoutId);
-      return resolve();
+      resolve();
+      return;
     }
 
     atlas.logger.info({ hashState: 'new', hash });
@@ -53,7 +49,7 @@ export const pinImage = (image: { [key: string]: string }, options: PinOptions):
   return Promise.all(
     Object.keys(image).map(key => {
       const version = image[key];
-      if (!version) return;
+      if (!version) return null;
       return pinFile(version, options);
     })
   );
@@ -71,7 +67,7 @@ export const pinPost = async ({
   const handleState = atlas.observer.state[handle];
   if (!handleState) {
     atlas.logger.error({ postState: 'missing', handle });
-    return;
+    return Promise.resolve();
   }
 
   const postIndex = handleState.chain.findIndex(block => block.uuid === uuid);
@@ -81,7 +77,7 @@ export const pinPost = async ({
 
   if (!postState) {
     atlas.logger.error({ postState: 'missing', handle });
-    return;
+    return Promise.resolve();
   }
 
   const options = { atlas };
@@ -99,7 +95,7 @@ export const pinHandle = async ({ atlas, handle }: { atlas: PhemeAtlas; handle: 
   const handleState = atlas.observer.state[handle];
   if (!handleState) {
     atlas.logger.error({ handleState: 'missing', handle });
-    return;
+    return Promise.resolve();
   }
 
   const { profile } = handleState;

@@ -1,10 +1,3 @@
-import Pheme from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
-
-import * as path from 'path';
-import * as util from 'util';
-import * as fs from 'fs';
-import * as ethers from 'ethers';
 import * as Logger from 'bunyan';
 
 import { run } from '../src/lib/atlas';
@@ -21,7 +14,7 @@ type ThenArg<T> = T extends Promise<infer U>
 
 type Atlas = ThenArg<ReturnType<typeof run>>;
 
-contract('Atlas e2e test', accounts => {
+contract('Atlas e2e test', () => {
   const Registry: any = artifacts.require('RegistryV1');
 
   let server: any;

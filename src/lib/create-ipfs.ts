@@ -58,7 +58,7 @@ export function createIPFSServer(options: {
         }
 
         await new Promise((startResolve, startReject) =>
-          daemon.start(['--migrate'], (err, ...args) => {
+          daemon.start(['--migrate'], err => {
             return err ? startReject(err) : startResolve();
           })
         );

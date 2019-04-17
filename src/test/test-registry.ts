@@ -1,10 +1,9 @@
 import { IRegistry } from '@pheme-kit/core';
-import { ITask, createTask } from '@pheme-kit/core/lib/task';
-import { v4 as uuid } from 'uuid';
+import { createTask } from '@pheme-kit/core/lib/task';
 import * as ethers from 'ethers';
 import EventEmitter from 'events';
 
-const mockTask = <T, M>(fn: (...fnArgs: any) => Promise<T>) => (...args: any) =>
+const mockTask = <T, M>(fn: (...fnArgs: any[]) => Promise<T>) => (...args: any[]) =>
   createTask<T>({ execute: () => fn(...args) });
 
 export default class TestRegistry implements IRegistry {
@@ -16,7 +15,7 @@ export default class TestRegistry implements IRegistry {
 
   public contract: any;
 
-  constructor() {
+  public constructor() {
     this.contract = {
       provider: this.emitter,
       on: this.emitter.on.bind(this.emitter),

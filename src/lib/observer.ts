@@ -18,7 +18,7 @@ export interface State {
 }
 
 export default class Observer extends EventEmitter {
-  get provider() {
+  public get provider() {
     return this.pheme.registry.contract.provider;
   }
 
@@ -81,7 +81,7 @@ export default class Observer extends EventEmitter {
     const queue = new PQueue({ concurrency: 4 });
     const { registry } = this.pheme;
     const handleCount = await registry.getHandleCount().execute();
-    const state = {} as State;
+    const state: State = {};
 
     for (let i = 0; i < handleCount; i += 1) {
       queue.add(async () => {
@@ -137,6 +137,8 @@ export default class Observer extends EventEmitter {
         });
         break;
       }
+      default:
+        break;
     }
   };
 }

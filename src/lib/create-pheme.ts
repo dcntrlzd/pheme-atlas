@@ -1,15 +1,9 @@
-import Pheme, { IBlock } from '@pheme-kit/core';
+import Pheme from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
-import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
+import PhemeStorageIPFS from '@pheme-kit/storage-ipfs';
 import * as ethers from 'ethers';
-import * as Logger from 'bunyan';
 
-import {
-  ExternalAtlasIPFSConfig,
-  EmbeddedAtlasIPFSConfig,
-  AtlasConfig,
-  AtlasIPFSEndpoints,
-} from './types';
+import { AtlasConfig, AtlasIPFSEndpoints } from './types';
 
 export function createProvider({ config }: { config: AtlasConfig }) {
   const { ethereum: ethereumConfig } = config;
@@ -22,11 +16,9 @@ export function createProvider({ config }: { config: AtlasConfig }) {
 
 export default async function createPheme({
   config,
-  logger,
   ipfs,
 }: {
   config: AtlasConfig;
-  logger: Logger;
   ipfs: AtlasIPFSEndpoints;
 }): Promise<Pheme<PhemeRegistry>> {
   const provider = createProvider({ config });

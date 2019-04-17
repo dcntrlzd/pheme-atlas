@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 import { IStorage } from '@pheme-kit/core';
 import { v4 as uuid } from 'uuid';
 

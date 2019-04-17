@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import Pheme from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
 
 import TestRegistry from '../src/test/test-registry';
 import TestStorage from '../src/test/test-storage';
