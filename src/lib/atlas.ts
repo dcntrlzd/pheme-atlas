@@ -58,6 +58,8 @@ export default class PhemeAtlas {
 
   public readonly observer: Observer;
 
+  public readonly jobQueue: PQueue;
+
   private constructor({
     pheme,
     logger,
@@ -73,23 +75,20 @@ export default class PhemeAtlas {
     this.ipfs = ipfs;
     this.pheme = pheme;
     this.observer = observer;
+
+    // TODO: Read concurrency from config
+    this.jobQueue = new PQueue({ concurrency: 2 });
   }
-}
 
-export async function run(logger: Logger, config: AtlasConfig) {
-  const atlas = await PhemeAtlas.create(config, logger);
-
-  const jobQueue = new PQueue({ concurrency: 2 });
-
-  const queue = (name: string, job: (Atlas) => any) => {
+  public queue = (name: string, job: (Atlas) => any) => {
     const jobId = generateUUID();
-    const jobLogger = atlas.logger.child({ process: `job:${name}`, jobId });
+    const jobLogger = this.logger.child({ process: `job:${name}`, jobId });
 
     jobLogger.info({ state: 'queued' });
-    jobQueue.add(async () => {
+    this.jobQueue.add(async () => {
       try {
         jobLogger.info({ state: 'begin' });
-        await job({ ...atlas, logger: jobLogger });
+        await job({ ...this, logger: jobLogger });
         jobLogger.info({ state: 'end' });
       } catch (e) {
         jobLogger.info({ state: 'failed' });
@@ -97,45 +96,51 @@ export async function run(logger: Logger, config: AtlasConfig) {
     });
   };
 
-  const start = () => {
-    logger.info({ state: 'listening' }, 'Atlas is listening...');
-
+  public scheduleJobs = () => {
+    // TODO: check if already scheduled
     schedule.scheduleJob('*/15 * * * *', () => {
-      queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
+      this.queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
     });
 
-    queue('intialPinState', context => pinState({ context }));
-
     schedule.scheduleJob('0 0 */1 * *', () =>
-      queue('refresh', async context => {
-        jobQueue.pause();
+      this.queue('refresh', async context => {
+        this.jobQueue.pause();
         try {
           await context.observer.refresh();
-          queue('refreshPinState', () => pinState({ context }));
-          queue('refreshArchiveState', () => archiveState({ context }));
+          await Promise.all([pinState({ context }), archiveState({ context })]);
         } finally {
-          jobQueue.pause();
+          this.jobQueue.pause();
         }
       })
     );
 
-    // Pin relevant content with each update
-    atlas.observer.on(Observer.events.newHandle, handle =>
-      queue('pinNewHandle', context => pinHandle({ context, handle }))
-    );
-
-    atlas.observer.on(Observer.events.updateProfile, handle =>
-      queue('pinUpdatedHandle', context => pinHandle({ context, handle }))
-    );
-
-    atlas.observer.on(Observer.events.newPost, (handle, uuid) =>
-      queue('pinNewPost', context => pinPost({ context, handle, uuid }))
-    );
-
-    atlas.observer.on(Observer.events.updatePost, (handle, uuid) =>
-      queue('pinUpdatedPost', context => pinPost({ context, handle, uuid }))
-    );
+    this.logger.info({ state: 'scheduled' }, 'Periodic jobs are scheduled');
   };
 
-  return { atlas, start };
+  public startListening = () => {
+    // TODO: check if already listening
+    this.observer.on(Observer.events.newHandle, handle =>
+      this.queue('pinNewHandle', context => pinHandle({ context, handle }))
+    );
+
+    this.observer.on(Observer.events.updateProfile, handle =>
+      this.queue('pinUpdatedHandle', context => pinHandle({ context, handle }))
+    );
+
+    this.observer.on(Observer.events.newPost, (handle, uuid) =>
+      this.queue('pinNewPost', context => pinPost({ context, handle, uuid }))
+    );
+
+    this.observer.on(Observer.events.updatePost, (handle, uuid) =>
+      this.queue('pinUpdatedPost', context => pinPost({ context, handle, uuid }))
+    );
+
+    this.logger.info({ state: 'listening' }, 'Event listeners are active.');
+  };
+
+  public start = () => {
+    this.queue('intialPinState', context => pinState({ context }));
+    this.startListening();
+    this.scheduleJobs();
+  };
 }

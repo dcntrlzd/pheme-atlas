@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as Logger from 'bunyan';
 
-import { run } from './lib/atlas';
+import PhemeAtlas from './lib/atlas';
 
 const logger = Logger.createLogger({
   name: 'atlas',
@@ -15,4 +15,6 @@ const config: any = JSON.parse(
   CONFIG || fs.readFileSync(path.resolve(__dirname, CONFIG_PATH)).toString()
 );
 
-run(logger, config).then(atlas => atlas.start());
+PhemeAtlas.create(config, logger).then(atlas => {
+  atlas.start();
+});
