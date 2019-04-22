@@ -42,7 +42,7 @@ export default class Observer extends EventEmitter {
 
   public state: State;
 
-  private constructor(pheme: Pheme<PhemeRegistry>) {
+  public constructor(pheme: Pheme<PhemeRegistry>) {
     super();
     this.pheme = pheme;
   }

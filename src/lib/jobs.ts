@@ -24,14 +24,14 @@ export const pinFile = (address: string, { context, timeout = 30000 }: PinOption
       resolve();
     }, timeout);
 
-    const currentMatches = await ipfs.pin.ls(hash);
+    const currentMatches = await ipfs.pin.ls(hash).catch(() => []);
     if (currentMatches.length > 0) {
       context.logger.info({ hashState: 'exists', hash });
       clearTimeout(timeoutId);
       resolve();
       return;
     }
-
+    1;
     context.logger.info({ hashState: 'new', hash });
 
     ipfs.pin

@@ -36,6 +36,11 @@ export function createIPFSServer(options: {
         },
       },
       async (error, daemon) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
         if (!fs.existsSync(repoPath)) {
           // TODO: remove custom version when this PR is released https://github.com/ipfs/js-ipfsd-ctl/pull/308
           logger.info('IPFS repo directory not found. Initializing new repo.');
@@ -57,21 +62,18 @@ export function createIPFSServer(options: {
           });
         }
 
+        logger.info('Starting embedded IPFS server.');
         await new Promise((startResolve, startReject) =>
-          daemon.start(['--migrate'], err => {
+          daemon.start(['--migrate', '--init'], err => {
             return err ? startReject(err) : startResolve();
           })
         );
-
-        if (error) {
-          reject(error);
-          return;
-        }
 
         const ipfsdLogger = logger.child({ process: 'go-ipfs' });
         daemon.subprocess.stdout.on('data', data => ipfsdLogger.info(data.toString()));
         daemon.subprocess.stderr.on('data', data => ipfsdLogger.error(data.toString()));
 
+        logger.info('Embedded IPFS server is ready.');
         resolve(daemon);
       }
     );

@@ -66,7 +66,7 @@ contract('Atlas e2e test', () => {
 
   const findLog = (lookup: (record: any) => boolean) => logBuffer.records.find(lookup);
   const waitUntil = (poller: () => Promise<boolean> | boolean, interval = 250) =>
-    new Promise((resolve) => {
+    new Promise(resolve => {
       const handler = async () => {
         if (await poller()) {
           resolve();

@@ -43,7 +43,9 @@ export default class PhemeAtlas {
     PhemeAtlas.validateConfig(config);
 
     const ipfs = await createIPFS({ config, logger });
-    const pheme = await createPheme({ config, ipfs });
+    const pheme = await createPheme({ config, logger, ipfs });
+
+    logger.info('Initializing Observer.');
     const observer = await Observer.create(pheme);
 
     logger.info({ state: 'ready' }, 'Atlas is ready');

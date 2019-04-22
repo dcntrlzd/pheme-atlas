@@ -2238,10 +2238,10 @@ globals@^11.0.1, globals@^11.7.0:
   resolved "https://registry.yarnpkg.com/globals/-/globals-11.11.0.tgz#dcf93757fa2de5486fbeed7118538adf789e9c2e"
   integrity sha512-WHq43gS+6ufNOEqlrDBxVEbb8ntfXrfAUU2ZOpCxrBdGKW3gyv8mCxAfIBD0DroPKGrJ2eSsXsLtY9MPntsyTw==
 
-go-ipfs-dep@^0.4.18:
-  version "0.4.19"
-  resolved "https://registry.yarnpkg.com/go-ipfs-dep/-/go-ipfs-dep-0.4.19.tgz#124811d1bceb88f05e74dbf8f6212cda97d76eec"
-  integrity sha512-3mIdQPJXe2aImWWLa9vhqwSViOkobS0uXRgBDiZ8TfJumfx7kq24EoHNfqqAX9RjU4VPV7JkASJXoTUCW7GAig==
+go-ipfs-dep@^0.4.20:
+  version "0.4.20"
+  resolved "https://registry.yarnpkg.com/go-ipfs-dep/-/go-ipfs-dep-0.4.20.tgz#897438a7141dbec9c4acfc5fe64b231e7d0e3dd5"
+  integrity sha512-Ds+ZIoh3rM1nfxoJ8PM1mhuOy/fzNIwWtWUP7kC7QeWv3GywvPzagbMT/9eSmGi4+Eu66mopxlhYn5AiZI/iVA==
   dependencies:
     go-platform "^1.0.0"
     gunzip-maybe "^1.4.1"
