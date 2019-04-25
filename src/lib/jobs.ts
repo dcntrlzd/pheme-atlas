@@ -176,7 +176,6 @@ export const ipfsHealthcheck = async ({
   timeout?: number;
 }) => {
   const { ipfs } = (context.pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
-  context.logger.info({ state: 'begin' });
 
   const timeoutId = setTimeout(() => {
     throw new Error(`IPFS healtcheck timed out after ${timeout}ms.`);

@@ -111,7 +111,7 @@ export default class PhemeAtlas {
           await context.observer.refresh();
           await Promise.all([pinState({ context }), archiveState({ context })]);
         } finally {
-          this.jobQueue.pause();
+          this.jobQueue.start();
         }
       })
     );
