@@ -37,6 +37,7 @@ jobs:
           command: |
             VERSION=$(echo $CIRCLE_SHA1 | cut -c1-7)
             gcloud compute instances update-container pheme-atlas-staging --container-image gcr.io/$GCP_PROJECT_ID/pheme-atlas:$VERSION
+            gcloud compute instances update-container pheme-atlas-mainnet --container-image gcr.io/$GCP_PROJECT_ID/pheme-atlas:$VERSION
       - run:
           name: Notify slack about the deployment
           command: |
