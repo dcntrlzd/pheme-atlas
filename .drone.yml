@@ -1,0 +1,6 @@
+pipeline:
+  build:
+    image: plugins/docker
+    repo: pheme-atlas
+    tags:
+      - latest
