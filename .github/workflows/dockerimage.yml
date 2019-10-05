@@ -15,7 +15,10 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag dcntrlzd/pheme-atlas:$(git rev-parse --short HEAD)
-    
+
+    - name: Login to Docker Hub
+      run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
     - name: Push the Docker Image
       run: docker push dcntrlzd/pheme-atlas:$(git rev-parse --short HEAD)
 
