@@ -100,9 +100,11 @@ export default class PhemeAtlas {
 
   public scheduleJobs = () => {
     // TODO: check if already scheduled
-    schedule.scheduleJob('*/15 * * * *', () => {
-      this.queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
-    });
+    if (this.ipfs.server !== undefined) { // healthcheck is only for the embedded server
+      schedule.scheduleJob('*/15 * * * *', () => {
+        this.queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
+      });
+    }
 
     schedule.scheduleJob('0 0 */1 * *', () =>
       this.queue('refresh', async context => {
