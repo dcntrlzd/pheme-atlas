@@ -20,5 +20,5 @@ jobs:
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Push the Docker Image
-      run: docker push dcntrlzd/pheme-atlas:$(git rev-parse --short HEAD)
+      run: docker push dcntrlzd/pheme-atlas:$(git rev-parse --short HEAD) dcntrlzd/pheme-atlas:latest
 
