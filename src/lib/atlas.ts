@@ -56,7 +56,7 @@ export default class PhemeAtlas {
 
   public readonly ipfs: AtlasIPFSEndpoints;
 
-  public readonly pheme: Pheme<PhemeRegistry>;
+  public readonly pheme: Pheme;
 
   public readonly observer: Observer;
 
@@ -70,7 +70,7 @@ export default class PhemeAtlas {
   }: {
     logger: Logger;
     ipfs: AtlasIPFSEndpoints;
-    pheme: Pheme<PhemeRegistry>;
+    pheme: Pheme;
     observer: Observer;
   }) {
     this.logger = logger;
@@ -100,7 +100,8 @@ export default class PhemeAtlas {
 
   public scheduleJobs = () => {
     // TODO: check if already scheduled
-    if (this.ipfs.server !== undefined) { // healthcheck is only for the embedded server
+    if (this.ipfs.server !== undefined) {
+      // healthcheck is only for the embedded server
       schedule.scheduleJob('*/15 * * * *', () => {
         this.queue('ipfsHealthcheck', context => ipfsHealthcheck({ context }));
       });

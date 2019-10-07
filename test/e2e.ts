@@ -4,8 +4,6 @@ import IPFSFactory from 'ipfsd-ctl';
 
 import * as ethers from 'ethers';
 import Pheme from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
-import PhemeStorageIPFS from '@pheme-kit/storage-ipfs';
 
 import PhemeAtlas from '../src/lib/atlas';
 import { AtlasConfig } from '../src/lib/types';
@@ -19,9 +17,14 @@ contract('Atlas e2e test', () => {
   let atlas: PhemeAtlas;
   let logger: Logger;
   let config: AtlasConfig;
-  let pheme: Pheme<PhemeRegistry>;
+  let pheme: Pheme;
+  let ipfsServer: any;
 
   const logBuffer = new Logger.RingBuffer({ limit: 100 });
+
+  after(async () => {
+    await ipfsServer.stop()
+  });
 
   before(async () => {
     const registryContract = await Registry.deployed();
@@ -29,9 +32,7 @@ contract('Atlas e2e test', () => {
     const { host: providerUrl } = Registry.web3.currentProvider;
 
     // build a diposable temp IPFS server for testing purposes
-    const ipfsServer: any = await new Promise((resolve, reject) =>
-      IPFSFactory.create().spawn((err, ipfsd) => (err ? reject(err) : resolve(ipfsd)))
-    );
+    ipfsServer = await IPFSFactory.create().spawn();
 
     const rpcUrl = `http://${ipfsServer.api.apiHost}:${ipfsServer.api.apiPort}`;
     const gatewayUrl = `http://${ipfsServer.api.gatewayHost}:${ipfsServer.api.gatewayPort}`;
@@ -59,8 +60,12 @@ contract('Atlas e2e test', () => {
     });
 
     const provider = new ethers.providers.Web3Provider(Registry.web3.currentProvider);
-    pheme = new Pheme(PhemeRegistry.attach(registryAddress, provider.getSigner()), {
-      ipfs: new PhemeStorageIPFS(rpcUrl, gatewayUrl),
+
+    pheme = await Pheme.create({
+      providerOrSigner: provider.getSigner(),
+      contractAddress: registryAddress,
+      ipfsApiUrl: rpcUrl,
+      ipfsGatewayUrl: gatewayUrl,
     });
   });
 
@@ -116,9 +121,17 @@ contract('Atlas e2e test', () => {
       type: 'text/markdown',
     };
     const postParams = buildPostParams(post);
-    const [address, { uuid }] = await pheme
-      .pushToHandle('test', postParams.data, postParams.meta)
+    const {
+      address,
+      block: { uuid },
+    } = await pheme
+      .pushToHandle(
+        'test',
+        { path: 'content.json', content: Buffer.from(JSON.stringify(postParams.data)) },
+        postParams.meta
+      )
       .execute();
+
     await waitUntil(() =>
       findLog(({ process, state }) => process === 'job:pinNewPost' && state === 'end')
     );
@@ -129,17 +142,23 @@ contract('Atlas e2e test', () => {
       ...post,
     };
     const updatedParams = buildPostParams(updatedPost);
-    await pheme.replaceFromHandle('test', uuid, updatedParams.data, updatedParams.meta).execute();
+    await pheme
+      .replaceFromHandle(
+        'test',
+        uuid,
+        { path: 'content.json', content: Buffer.from(JSON.stringify(updatedParams.data)) },
+        updatedParams.meta
+      )
+      .execute();
     await waitUntil(() =>
       findLog(({ process, state }) => process === 'job:pinUpdatedPost' && state === 'end')
     );
-    // TODO: push post address to pinList
 
-    const storage = pheme.storage.getStorage() as PhemeStorageIPFS;
-    const { ipfs } = storage;
+    // TODO: push post address to pinList
+    const ipfs = pheme.storage.writer;
     const pinnedItems = await ipfs.pin.ls();
 
-    expect(pinnedItems).to.have.lengthOf(14);
+    expect(pinnedItems).to.have.lengthOf(16);
     // TODO: compare pinned items to pinList
   });
 });

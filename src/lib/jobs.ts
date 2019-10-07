@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import moment from 'moment';
 import tmp from 'tmp';
 import { Storage as CloudStorage } from '@google-cloud/storage';
-import PhemeStorageIPFS, { hashFromUrl } from '@pheme-kit/storage-ipfs';
 
 import PhemeAtlas from './atlas';
 
@@ -12,10 +11,11 @@ interface PinOptions {
   timeout?: number;
 }
 
-export const pinFile = (address: string, { context, timeout = 30000 }: PinOptions) =>
+const sanitizeLegacyAddress = (address: string) => address.replace('ipfs://', '');
+
+export const pinFile = (hash: string, { context, timeout = 30000 }: PinOptions) =>
   new Promise(async resolve => {
-    const { ipfs } = (context.pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
-    const hash = hashFromUrl(address);
+    const { writer: ipfs } = context.pheme.storage;
 
     let isTimedOut = false;
     const timeoutId = setTimeout(() => {
@@ -50,7 +50,7 @@ export const pinImage = (image: { [key: string]: string }, options: PinOptions):
     Object.keys(image).map(key => {
       const version = image[key];
       if (!version) return null;
-      return pinFile(version, options);
+      return pinFile(sanitizeLegacyAddress(version), options);
     })
   );
 };
@@ -65,30 +65,32 @@ export const pinPost = async ({
   uuid: string;
 }) => {
   const handleState = context.observer.state[handle];
+
   if (!handleState) {
     context.logger.error({ postState: 'missing', handle });
     return Promise.resolve();
   }
 
-  const postIndex = handleState.chain.findIndex(block => block.uuid === uuid);
-  const postPointer =
-    postIndex > 0 ? handleState.chain[postIndex - 1].previous : handleState.pointer;
-  const postState = postIndex >= 0 ? handleState.chain[postIndex] : undefined;
-
-  if (!postState) {
+  const postWrapper = handleState.chain.find(wrapper => wrapper.block.uuid === uuid);
+  if (!postWrapper) {
     context.logger.error({ postState: 'missing', handle });
     return Promise.resolve();
   }
 
   const options = { context };
 
-  return Promise.all([
-    postPointer ? pinFile(postPointer, options) : null,
-    postState.previous ? pinFile(postState.previous, options) : null,
-    postState.address ? pinFile(postState.address, options) : null,
-    postState.meta.coverImageUrl ? pinFile(postState.meta.coverImageUrl, options) : null,
-    postState.meta.coverImage ? pinImage(postState.meta.coverImage, options) : null,
-  ]);
+  if (['v1', 'v2'].includes(postWrapper.blockVersion)) {
+    const { meta } = postWrapper.block;
+    // Legacy pinning
+    return Promise.all([
+      pinFile(sanitizeLegacyAddress(postWrapper.address), options),
+      pinFile(sanitizeLegacyAddress(postWrapper.contentAddress), options),
+      meta.coverImageUrl ? pinFile(sanitizeLegacyAddress(meta.coverImageUrl), options) : null,
+      meta.coverImage ? pinImage(meta.coverImage, options) : null,
+    ]);
+  } else {
+    return pinFile(postWrapper.address, options);
+  }
 };
 
 export const pinHandle = async ({ context, handle }: { context: PhemeAtlas; handle: string }) => {
@@ -117,7 +119,7 @@ export const pinState = async ({ context }: { context: PhemeAtlas }) => {
     await pinHandle({ handle, context });
     const { chain } = state[handle];
     for (const post of chain) {
-      const { uuid } = post;
+      const { uuid } = post.block;
       await pinPost({ context, handle, uuid });
     }
   }
@@ -151,13 +153,14 @@ export const archiveState = async ({ context }: { context: PhemeAtlas }) => {
     fs.appendFileSync(handleLog.name, `${JSON.stringify({ handle, profile, owner })}\n`);
 
     const postLog = tmp.fileSync();
-    let { pointer } = handleState;
     for (const ring of chain) {
       const post = await context.pheme.storage.readObject(ring.address);
 
-      context.logger.info({ snapshotId, type: 'post', handle, ring: ring.uuid });
-      fs.appendFileSync(postLog.name, `${JSON.stringify({ pointer, handle, ring, post })}\n`);
-      pointer = ring.previous;
+      context.logger.info({ snapshotId, type: 'post', handle, ring: ring.block.uuid });
+      fs.appendFileSync(
+        postLog.name,
+        `${JSON.stringify({ pointer: ring.address, handle, ring, post })}\n`
+      );
     }
 
     await bucket.upload(postLog.name, { destination: `${snapshotId}/posts/${handle}.json` });
@@ -175,7 +178,7 @@ export const ipfsHealthcheck = async ({
   context: PhemeAtlas;
   timeout?: number;
 }) => {
-  const { ipfs } = (context.pheme.storage as any).storageMap.ipfs as PhemeStorageIPFS;
+  const { writer: ipfs } = context.pheme.storage;
 
   const timeoutId = setTimeout(() => {
     throw new Error(`IPFS healtcheck timed out after ${timeout}ms.`);

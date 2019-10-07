@@ -1,5 +1,5 @@
-import Pheme, { IBlock } from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
+import Pheme from '@pheme-kit/core';
+import WrappedBlock from '@pheme-kit/core/lib/wrapped-block';
 
 import EventEmitter from 'events';
 import PQueue from 'p-queue';
@@ -8,9 +8,8 @@ import * as ethers from 'ethers';
 
 export interface HandleState {
   owner: string;
-  pointer: string;
   profile: string;
-  chain: IBlock[];
+  chain: WrappedBlock[];
 }
 
 export interface State {
@@ -32,17 +31,17 @@ export default class Observer extends EventEmitter {
     updateProfile: 'updateProfile',
   };
 
-  public static async create(pheme: Pheme<PhemeRegistry>) {
+  public static async create(pheme: Pheme) {
     const instance = new Observer(pheme);
     await instance.refresh();
     return instance;
   }
 
-  public readonly pheme: Pheme<PhemeRegistry>;
+  public readonly pheme: Pheme;
 
   public state: State;
 
-  public constructor(pheme: Pheme<PhemeRegistry>) {
+  public constructor(pheme: Pheme) {
     super();
     this.pheme = pheme;
   }
@@ -68,13 +67,13 @@ export default class Observer extends EventEmitter {
   public async loadHandleState(handle: string): Promise<HandleState> {
     const { registry } = this.pheme;
 
-    const [owner, profile, [pointer, chain]] = await Promise.all([
+    const [owner, profile, chain] = await Promise.all([
       registry.getOwner(handle).execute(),
       registry.getProfile(handle).execute(),
       this.pheme.loadHandle(handle).execute(),
     ]);
 
-    return { owner, pointer, profile, chain };
+    return { owner, profile, chain };
   }
 
   public async loadState(): Promise<State> {
@@ -122,17 +121,44 @@ export default class Observer extends EventEmitter {
         this.emit(Observer.events.newOwner, handle);
         break;
       case 'pointer': {
-        const newPosts = lodash.differenceBy(newState.chain, oldState.chain, 'uuid');
-        newPosts.forEach(post => this.emit(Observer.events.newPost, handle, post.uuid));
+        const newPostWrappers = lodash.differenceBy(
+          newState.chain,
+          oldState.chain,
+          (wrapper: WrappedBlock) => wrapper.block.uuid
+        );
+        newPostWrappers.forEach(wrapper =>
+          this.emit(Observer.events.newPost, handle, wrapper.block.uuid)
+        );
 
-        const removedPosts = lodash.differenceBy(oldState.chain, newState.chain, 'uuid');
-        removedPosts.forEach(post => this.emit(Observer.events.unpublishPost, handle, post.uuid));
+        const removedPostWrappers = lodash.differenceBy(
+          oldState.chain,
+          newState.chain,
+          (wrapper: WrappedBlock) => wrapper.block.uuid
+        );
+        removedPostWrappers.forEach(wrapper =>
+          this.emit(Observer.events.unpublishPost, handle, wrapper.block.uuid)
+        );
 
-        newState.chain.forEach(post => {
-          const oldPost = oldState.chain.find(({ uuid }) => uuid === post.uuid);
-          if (!oldPost) return;
-          if (!lodash.isEqual(post, oldPost)) {
-            this.emit(Observer.events.updatePost, handle, post.uuid);
+        newState.chain.forEach(async wrapper => {
+          const oldWrapper = oldState.chain.find(
+            oldWrapper => oldWrapper.block.uuid === wrapper.block.uuid
+          );
+
+          if (!oldWrapper) return;
+
+          // block has changed
+          if (!lodash.isEqual(oldWrapper.block, wrapper.block)) {
+            this.emit(Observer.events.updatePost, handle, wrapper.block.uuid);
+          } else if (oldWrapper.contentAddress !== wrapper.contentAddress) {
+            // check if content has changed
+            const [oldContentHash, newContentHash] = await Promise.all([
+              this.pheme.storage.writer.block.stat(oldWrapper.contentAddress),
+              this.pheme.storage.writer.block.stat(wrapper.contentAddress),
+            ]);
+
+            if (oldContentHash !== newContentHash) {
+              this.emit(Observer.events.updatePost, handle, wrapper.block.uuid);
+            }
           }
         });
         break;

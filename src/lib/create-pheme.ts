@@ -1,6 +1,4 @@
 import Pheme from '@pheme-kit/core';
-import PhemeRegistry from '@pheme-kit/core/lib/registry';
-import PhemeStorageIPFS from '@pheme-kit/storage-ipfs';
 import * as ethers from 'ethers';
 import * as Logger from 'bunyan';
 
@@ -23,25 +21,29 @@ export default async function createPheme({
   logger: Logger;
   config: AtlasConfig;
   ipfs: AtlasIPFSEndpoints;
-}): Promise<Pheme<PhemeRegistry>> {
+}): Promise<Pheme> {
   logger.info('Connecting to ethereum provider.');
 
   const provider = createProvider({ config });
 
-  const { ethereum: ethereumConfig } = config;
+  const pheme = Pheme.create({
+    providerOrSigner: provider,
+    contractAddress: config.ethereum.registryAddress,
+    ipfsApiUrl: ipfs.ipfsRpcUrl,
+    ipfsGatewayUrl: ipfs.ipfsGatewayUrl,
+  });
+
   const { chainId: networkId } = await provider.getNetwork();
 
-  const registry = PhemeRegistry.attach(ethereumConfig.registryAddress, provider);
-  logger.info('Validating registry.');
+  logger.info('Validating configuration.');
 
-  await registry
+  await pheme.registry
     .getHandleCount()
     .execute()
     .catch(() => {
       throw new Error(`Contract not found at network ${networkId}`);
     });
-  const ipfsStorage = new PhemeStorageIPFS(ipfs.ipfsRpcUrl, ipfs.ipfsGatewayUrl);
 
   logger.info('Pheme connection initialized');
-  return new Pheme(registry, { ipfs: ipfsStorage });
+  return pheme;
 }

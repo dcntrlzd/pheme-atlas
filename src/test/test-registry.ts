@@ -1,4 +1,3 @@
-import { IRegistry } from '@pheme-kit/core';
 import { createTask } from '@pheme-kit/core/lib/task';
 import * as ethers from 'ethers';
 import EventEmitter from 'events';
@@ -6,7 +5,7 @@ import EventEmitter from 'events';
 const mockTask = <T, M>(fn: (...fnArgs: any[]) => Promise<T>) => (...args: any[]) =>
   createTask<T>({ execute: () => fn(...args) });
 
-export default class TestRegistry implements IRegistry {
+export default class TestRegistry {
   private providerBlockNumber = 0;
 
   private emitter = new EventEmitter();
