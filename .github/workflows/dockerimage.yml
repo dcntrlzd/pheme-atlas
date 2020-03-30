@@ -2,15 +2,15 @@ name: Docker Image CI
 
 on:
   push:
-    branches: 
+    branches:
       - master
 
 jobs:
 
   build:
- 
+
     runs-on: ubuntu-latest
- 
+
     steps:
     - uses: actions/checkout@v1
     - name: Build the Docker image
@@ -19,8 +19,8 @@ jobs:
     - name: Login to Docker Hub
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Push the versioned Docker Image 
+    - name: Push the versioned Docker Image
       run: docker push dcntrlzd/pheme-atlas:$(git rev-parse --short HEAD)
 
-    - name: Push the latest Docker Image 
+    - name: Push the latest Docker Image
       run: docker push dcntrlzd/pheme-atlas:latest
