@@ -1,6 +1,6 @@
 version: '3'
 services:
-  atlas-mainnet:
+  mainnet:
     build: ../..
     logging:
       driver: "json-file"
@@ -12,8 +12,8 @@ services:
       - ipfs
     environment:
       CONFIG: '{"ipfs":{"rpcUrl":"http://ipfs:5001","gatewayUrl":"http://ipfs:8080"},"ethereum":{"provider":"https://mainnet.infura.io/v3/47cf49fa637f443fb1492f11a6620f42","registryAddress":"0x5f0fCa943f2Bd8be308e992D1823F587B6601a96"}}'
-  atlas-ropsten:
-    image: "pheme-atlas:latest"
+  ropsten:
+    build: ../..
     logging:
       driver: "json-file"
       options:
