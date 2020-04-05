@@ -1,0 +1,41 @@
+version: '3'
+services:
+  atlas-mainnet:
+    build: ../..
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "20"
+    restart: unless-stopped
+    links:
+      - ipfs
+    environment:
+      CONFIG: '{"ipfs":{"rpcUrl":"http://ipfs:5001","gatewayUrl":"http://ipfs:8080"},"ethereum":{"provider":"https://mainnet.infura.io/v3/47cf49fa637f443fb1492f11a6620f42","registryAddress":"0x5f0fCa943f2Bd8be308e992D1823F587B6601a96"}}'
+  atlas-ropsten:
+    image: "pheme-atlas:latest"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "20"
+    restart: unless-stopped
+    links:
+      - ipfs
+    environment:
+      CONFIG: '{"ipfs": {"rpcUrl":"http://ipfs:5001", "gatewayUrl":"http://ipfs:8080"},"ethereum":{"provider":"https://ropsten.infura.io/v3/47cf49fa637f443fb1492f11a6620f42","registryAddress":"0x5adAd0ADD8359AB3b8C859D695ED7B318D31864A"}}'
+  ipfs:
+    build: ./ipfs
+    image: "go-ipfs:latest"
+    restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "20"
+    volumes:
+     - /var/ipfs:/data/ipfs
+    ports:
+     - "4001:4001"
+     - "5001:5001"
+     - "8080:8080"
