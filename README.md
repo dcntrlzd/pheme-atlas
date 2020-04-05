@@ -18,4 +18,8 @@ A docker image for it can be found at https://hub.docker.com/repository/docker/d
 ```
 2. Then run the docker container.
 
-
+# How to run it on Raspberry pi
+1. Clone the repository with `git clone https://github.com/dcntrlzd/pheme-atlas.git`
+2. Go to the `compose/pi` directory
+3. Run `sudo ./prepare.sh`. This will install docker and docker-compose
+4. Start the servers (mainnet and ropsten) with `docker-compose up -d`. Setting a custom project name while using docker compose is highly recommended (ex: `docker-compose -p atlas up -d`)
