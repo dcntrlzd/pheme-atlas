@@ -39,7 +39,7 @@ COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 RUN chmod +x /usr/local/bin/start_ipfs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
-COPY --from=0 /lib/arm-linux-gnueabihf/libdl-2.24.so /lib/libdl.so.2
+COPY --from=0 /lib/arm-linux-gnueabihf/libdl-2.28.so /lib/libdl.so.2
 
 # Swarm TCP; should be exposed to the public
 EXPOSE 4001

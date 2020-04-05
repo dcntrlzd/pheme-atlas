@@ -26,7 +26,6 @@ services:
       CONFIG: '{"ipfs": {"rpcUrl":"http://ipfs:5001", "gatewayUrl":"http://ipfs:8080"},"ethereum":{"provider":"https://ropsten.infura.io/v3/47cf49fa637f443fb1492f11a6620f42","registryAddress":"0x5adAd0ADD8359AB3b8C859D695ED7B318D31864A"}}'
   ipfs:
     build: ./ipfs
-    image: "go-ipfs:latest"
     restart: on-failure
     logging:
       driver: "json-file"
