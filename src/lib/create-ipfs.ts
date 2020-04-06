@@ -1,8 +1,8 @@
-import IPFSFactory from 'ipfsd-ctl';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as Logger from 'bunyan';
 
+import createIPFSController from 'src/utils/create-ipfs-controller';
 import {
   ExternalAtlasIPFSConfig,
   EmbeddedAtlasIPFSConfig,
@@ -10,74 +10,63 @@ import {
   AtlasIPFSEndpoints,
 } from './types';
 
-export function createIPFSServer(options: {
+export async function createIPFSServer(options: {
   repositoryPath: string;
   logger: Logger;
   apiPort?: number;
   gatewayPort?: number;
 }): Promise<any> {
   const { repositoryPath, logger, apiPort = 5001, gatewayPort = 8080 } = options;
-  return new Promise(async (resolve, reject) => {
-    const repoPath = path.resolve(process.cwd(), repositoryPath);
-    const factory = IPFSFactory.create({ type: 'go' });
+  const repoPath = path.resolve(process.cwd(), repositoryPath);
 
-    factory.spawn(
-      {
-        disposable: false,
-        repoPath,
-        config: {
-          Addresses: {
-            API: `/ip4/0.0.0.0/tcp/${apiPort}`,
-            Announce: null,
-            Gateway: `/ip4/0.0.0.0/tcp/${gatewayPort}`,
-            NoAnnounce: null,
-            Swarm: ['/ip4/0.0.0.0/tcp/4001', '/ip6/::/tcp/4001'],
-          },
-        },
+  const daemon = await createIPFSController({
+    disposable: false,
+    repoPath,
+    config: {
+      Addresses: {
+        API: `/ip4/0.0.0.0/tcp/${apiPort}`,
+        Announce: null,
+        Gateway: `/ip4/0.0.0.0/tcp/${gatewayPort}`,
+        NoAnnounce: null,
+        Swarm: ['/ip4/0.0.0.0/tcp/4001', '/ip6/::/tcp/4001'],
       },
-      async (error, daemon) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        if (!fs.existsSync(repoPath)) {
-          // TODO: remove custom version when this PR is released https://github.com/ipfs/js-ipfsd-ctl/pull/308
-          logger.info('IPFS repo directory not found. Initializing new repo.');
-          await new Promise((initResolve, initReject) =>
-            daemon.init(
-              {
-                directory: repoPath,
-              },
-              err => {
-                return err ? initReject(err) : initResolve();
-              }
-            )
-          );
-        } else {
-          logger.info('IPFS repo directory found. Cleaning lock files.');
-          // TODO: try to improve this logic https://github.com/ipfs/js-ipfsd-ctl/issues/226
-          [path.resolve(repoPath, './api'), path.resolve(repoPath, './repo.lock')].forEach(file => {
-            if (fs.existsSync(file)) fs.unlinkSync(file);
-          });
-        }
-
-        logger.info('Starting embedded IPFS server.');
-        await new Promise((startResolve, startReject) =>
-          daemon.start(['--migrate', '--init'], err => {
-            return err ? startReject(err) : startResolve();
-          })
-        );
-
-        const ipfsdLogger = logger.child({ process: 'go-ipfs' });
-        daemon.subprocess.stdout.on('data', data => ipfsdLogger.info(data.toString()));
-        daemon.subprocess.stderr.on('data', data => ipfsdLogger.error(data.toString()));
-
-        logger.info('Embedded IPFS server is ready.');
-        resolve(daemon);
-      }
-    );
+    },
   });
+
+  if (!fs.existsSync(repoPath)) {
+    // TODO: remove custom version when this PR is released https://github.com/ipfs/js-ipfsd-ctl/pull/308
+    logger.info('IPFS repo directory not found. Initializing new repo.');
+    await new Promise((initResolve, initReject) =>
+      daemon.init(
+        {
+          directory: repoPath,
+        },
+        err => {
+          return err ? initReject(err) : initResolve();
+        }
+      )
+    );
+  } else {
+    logger.info('IPFS repo directory found. Cleaning lock files.');
+    // TODO: try to improve this logic https://github.com/ipfs/js-ipfsd-ctl/issues/226
+    [path.resolve(repoPath, './api'), path.resolve(repoPath, './repo.lock')].forEach(file => {
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+    });
+  }
+
+  logger.info('Starting embedded IPFS server.');
+  await new Promise((startResolve, startReject) =>
+    daemon.start(['--migrate', '--init'], err => {
+      return err ? startReject(err) : startResolve();
+    })
+  );
+
+  const ipfsdLogger = logger.child({ process: 'go-ipfs' });
+  daemon.subprocess.stdout.on('data', data => ipfsdLogger.info(data.toString()));
+  daemon.subprocess.stderr.on('data', data => ipfsdLogger.error(data.toString()));
+
+  logger.info('Embedded IPFS server is ready.');
+  return daemon;
 }
 
 export default async function createIPFS({

@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import * as Logger from 'bunyan';
-import IPFSFactory from 'ipfsd-ctl';
 
 import * as ethers from 'ethers';
 import Pheme from '@pheme-kit/core';
 import PhemeRegistry from '@pheme-kit/core/lib/registry';
 import PhemeStorageIPFS from '@pheme-kit/storage-ipfs';
 
+import createIPFSController from 'src/utils/create-ipfs-controller';
 import PhemeAtlas from '../src/lib/atlas';
 import { AtlasConfig } from '../src/lib/types';
 
@@ -29,9 +29,7 @@ contract('Atlas e2e test', () => {
     const { host: providerUrl } = Registry.web3.currentProvider;
 
     // build a diposable temp IPFS server for testing purposes
-    const ipfsServer: any = await new Promise((resolve, reject) =>
-      IPFSFactory.create().spawn((err, ipfsd) => (err ? reject(err) : resolve(ipfsd)))
-    );
+    const ipfsServer = await createIPFSController({ disposable: true });
 
     const rpcUrl = `http://${ipfsServer.api.apiHost}:${ipfsServer.api.apiPort}`;
     const gatewayUrl = `http://${ipfsServer.api.gatewayHost}:${ipfsServer.api.gatewayPort}`;
@@ -116,7 +114,7 @@ contract('Atlas e2e test', () => {
       type: 'text/markdown',
     };
     const postParams = buildPostParams(post);
-    const [address, { uuid }] = await pheme
+    const [_address, { uuid }] = await pheme
       .pushToHandle('test', postParams.data, postParams.meta)
       .execute();
     await waitUntil(() =>

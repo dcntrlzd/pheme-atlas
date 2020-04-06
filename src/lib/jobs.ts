@@ -31,7 +31,7 @@ export const pinFile = (address: string, { context, timeout = 30000 }: PinOption
       resolve();
       return;
     }
-    1;
+
     context.logger.info({ hashState: 'new', hash });
 
     ipfs.pin

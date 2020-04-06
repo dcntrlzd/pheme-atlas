@@ -19,13 +19,21 @@
   },
   "settings": {
     "import/resolver": {
-      "typescript": {},
+      "typescript": {}
     }
   },
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "no-restricted-syntax": ["error", "LabeledStatement", "WithStatement"],
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "import/extensions": "off",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ]
   }
 }
